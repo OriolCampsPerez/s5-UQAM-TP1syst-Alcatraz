@@ -44,14 +44,12 @@ int main(int argc, char **argv){
   int pid = fork();
   if (pid<0) {
     // erreur fork --> 'Si un appel système fait par alcatraz, peu importe lequel, échoue, alors alcatraz doit s'arrêter et retourner la valeur 1.'
-    fprintf(stderr,"fork");
     return 1;
   }
   else if (pid==0) { // fils
     // s'assurer qu'aucune élévation de privilèges n'est faite dans le processus enfant, en utilisant l'appel système prctl;
     if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
       // erreur prctl --> 'Si un appel système fait par alcatraz, peu importe lequel, échoue, alors alcatraz doit s'arrêter et retourner la valeur 1.'
-      printf("error privilèges\n");
       return 1;
     }
 
@@ -81,8 +79,6 @@ int main(int argc, char **argv){
     if (install_multi_forbid_filters(fbn_syscall_tab,i) != 0) {
       // erreur install_multi_forbid_filters -- qui provient d'un erreur d'un appel système ; donc :
       // erreur --> 'Si un appel système fait par alcatraz, peu importe lequel, échoue, alors alcatraz doit s'arrêter et retourner la valeur 1.'
-      printf("%d\n", errno);
-      fprintf(stderr,"install_multi_forbid_filters");
       return 1;
     }
     // install_filter(fbn_syscall_tab[0], AUDIT_ARCH_X86_64, 3253);
@@ -104,18 +100,17 @@ int main(int argc, char **argv){
     if (wpidreturn==pid) {
       if (WIFEXITED(wstatus)) {
         // succès --> 'Si le fils s'est terminé normalement, afficher la valeur retournée par le fils et terminer en retournant 0.'
-        fprintf(stdout, "e- %d\n", WEXITSTATUS(wstatus));
+        fprintf(stdout, "%d\n", WEXITSTATUS(wstatus));
         return 0;
       }
       else if (WIFSIGNALED(wstatus)) {
         // erreur --> 'Si le fils s'est terminé à cause d'un signal reçu, afficher le numéro du signal et retourner la valeur 1.'
-        fprintf(stdout, "s- %d\n", WTERMSIG(wstatus));
+        fprintf(stdout, "%d\n", WTERMSIG(wstatus));
         return 1;
       }
     }
     else {
       // erreur --> 'Dans tous les autres cas, ne rien afficher et retourner la valeur 0.'
-      fprintf(stderr, "WEXITSTATUS else\n");
       return 0;
     }
   }
@@ -195,8 +190,6 @@ static int install_filter(int syscall_nr, int t_arch, int f_errno) {
   //**** MODIFIÉ ****//
   if (prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, &prog)) {
     // erreur prctl --> 'Si un appel système fait par alcatraz, peu importe lequel, échoue, alors alcatraz doit s'arrêter et retourner la valeur 1.'
-    fprintf(stderr, "erreur installation filtre\t");
-    printf("%d\n", errno);
     return 1;
   }
 
