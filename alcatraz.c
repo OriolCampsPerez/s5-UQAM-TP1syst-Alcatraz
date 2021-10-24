@@ -31,13 +31,14 @@
 
 //  ***** fonctions utilisées *****  //
 int count_nb(char *str);
-static int install_filter(int syscall_nr, int t_arch, int f_errno);
+static int install_filter(int syscall_nr, int t_arch);
 static int install_multi_forbid_filters(int *syscall_tab, int nb_syscalls);
 //  ** ** ***** *** *** ***** ** **  //
-
+void create_args_list(int argc,char **argv,char ***out);
 
 int main(int argc, char **argv){
-  if (argc != 3) {
+
+  if (argc < 3) {
     return 1;
   }
 
@@ -81,14 +82,19 @@ int main(int argc, char **argv){
       // erreur --> 'Si un appel système fait par alcatraz, peu importe lequel, échoue, alors alcatraz doit s'arrêter et retourner la valeur 1.'
       return 1;
     }
-    // install_filter(fbn_syscall_tab[0], AUDIT_ARCH_X86_64, 3253);
 
     // une fois les filtres en place, lancer LIGNE_COMMANDES avec l'appel système execve.
     // man execve(2) utilisé
 
-    char *exec_args[] = {NULL, argv[2], NULL};
+    char *liste_exec_args[argc];
+    for (int i=1 ; i<argc-1 ; i++) {
+      liste_exec_args[i] = argv[i+1];
+    }
+    liste_exec_args[0] = NULL;
+    liste_exec_args[argc] = NULL;
+
     char *environ[] = {NULL};
-    execve(argv[2],exec_args,environ);
+    execve(argv[2],liste_exec_args,environ);
     // erreur execve --> 'Si un appel système fait par alcatraz, peu importe lequel, échoue, alors alcatraz doit s'arrêter et retourner la valeur 1.'
     return 1;
 
@@ -135,6 +141,14 @@ int count_nb(char *str) {
   return r+1;
 }
 
+void create_args_list(int argc, char **argv, char ***out) {
+  char *list[argc-2];
+  for (int i=0 ; i<argc-2 ; i++) {
+    list[i] = argv[i+2];
+  }
+  *out = list;
+}
+
 /* fonction : static int install_filter(int syscall_nr, int t_arch, int f_errno)
  *******************************************************************************
  * CETTE FONCTION APPARAÎT DANS LA SECTION EXEMPLES DE LA PAGE SECCOMP(2) DU MANUEL LINUX ; DISPONIBLE AVEC LA COMMANDE 'man seccomp.2'
@@ -143,10 +157,9 @@ int count_nb(char *str) {
  *******************************************************************************
  * syscall_nr : le numéro d'appel système
  * t_arch : l'architecture choisie
- * f_errno : la valeur choisie pour mettre dans errno
  * sortie --> 0 si succès, 1 si erreur
  */
-static int install_filter(int syscall_nr, int t_arch, int f_errno) {
+static int install_filter(int syscall_nr, int t_arch) {
   unsigned int upper_nr_limit = 0xffffffff;
   /* Assume that AUDIT_ARCH_X86_64 means the normal x86-64 ABI
    * (in the x32 ABI, all system calls have bit 30 set in the
@@ -187,7 +200,6 @@ static int install_filter(int syscall_nr, int t_arch, int f_errno) {
     .filter = filter,
   };
 
-  //**** MODIFIÉ ****//
   if (prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, &prog)) {
     // erreur prctl --> 'Si un appel système fait par alcatraz, peu importe lequel, échoue, alors alcatraz doit s'arrêter et retourner la valeur 1.'
     return 1;
@@ -203,7 +215,7 @@ static int install_filter(int syscall_nr, int t_arch, int f_errno) {
  */
 static int install_multi_forbid_filters(int *syscall_tab, int nb_syscalls) {
   for (int i=0 ; i<nb_syscalls ; i++) {
-    if (install_filter(syscall_tab[i], AUDIT_ARCH_X86_64, 3253) != 0) {
+    if (install_filter(syscall_tab[i], AUDIT_ARCH_X86_64) != 0) {
       // erreur install_filter -- qui provient d'un erreur d'un appel système ; donc :
       // erreur --> 'Si un appel système fait par alcatraz, peu importe lequel, échoue, alors alcatraz doit s'arrêter et retourner la valeur 1.'
       return 1;
