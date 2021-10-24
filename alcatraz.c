@@ -26,6 +26,7 @@
 
 
 #define NB_CALLSYS_LNX 393 //nombre d'appels système en Linux (https://research.cs.queensu.ca/home/cordy/Papers/BKBHDC_ESE_Linux.pdf)
+#define NB_ARGS_DEF 2 //nombre d'arguments qui ne sont pas partie de la commande à executer
 #define X32_SYSCALL_BIT 0x40000000
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
@@ -34,7 +35,6 @@ int count_nb(char *str);
 static int install_filter(int syscall_nr, int t_arch);
 static int install_multi_forbid_filters(int *syscall_tab, int nb_syscalls);
 //  ** ** ***** *** *** ***** ** **  //
-void create_args_list(int argc,char **argv,char ***out);
 
 int main(int argc, char **argv){
 
@@ -86,15 +86,14 @@ int main(int argc, char **argv){
     // une fois les filtres en place, lancer LIGNE_COMMANDES avec l'appel système execve.
     // man execve(2) utilisé
 
-    char *liste_exec_args[argc];
-    for (int i=1 ; i<argc-1 ; i++) {
-      liste_exec_args[i] = argv[i+1];
+    char * exec_liste[argc-NB_ARGS_DEF+1];
+    for (int i=0 ; i<argc-NB_ARGS_DEF ; i++) {
+      exec_liste[i] = argv[i+NB_ARGS_DEF];
     }
-    liste_exec_args[0] = NULL;
-    liste_exec_args[argc] = NULL;
+    exec_liste[argc-NB_ARGS_DEF] = NULL;
 
     char *environ[] = {NULL};
-    execve(argv[2],liste_exec_args,environ);
+    execve(argv[NB_ARGS_DEF],exec_liste,environ);
     // erreur execve --> 'Si un appel système fait par alcatraz, peu importe lequel, échoue, alors alcatraz doit s'arrêter et retourner la valeur 1.'
     return 1;
 
@@ -141,13 +140,6 @@ int count_nb(char *str) {
   return r+1;
 }
 
-void create_args_list(int argc, char **argv, char ***out) {
-  char *list[argc-2];
-  for (int i=0 ; i<argc-2 ; i++) {
-    list[i] = argv[i+2];
-  }
-  *out = list;
-}
 
 /* fonction : static int install_filter(int syscall_nr, int t_arch, int f_errno)
  *******************************************************************************
